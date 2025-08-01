@@ -1,0 +1,5 @@
+az login --tenant "[FILL OUT]"
+az account set --subscription "[FILL OUT]"
+
+az group create --name "nl-stu-jvw-java-ot" --location "westeurope"
+az deployment group create --resource-group "nl-stu-jvw-java-ot" --template-file "infra/main.bicep"
