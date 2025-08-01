@@ -4,5 +4,5 @@ Goal of this repository it to have a 'hello world' JAVA web application and inst
 
 ## Screenshot
 
-![Application Screenshot](assets/screenshot.png)
+![Application Screenshot](assets/screen.png)
 
