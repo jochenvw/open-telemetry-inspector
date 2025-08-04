@@ -62,13 +62,7 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-otlp</artifactId>
-            <version>1.52.0</version>
-        </dependency>        
-        <dependency>
-            <groupId>io.opentelemetry.exporter</groupId>
-            <artifactId>opentelemetry-exporter-otlp-grpc</artifactId>
-            <version>1.38.0</version> <!-- Match with your other OTEL versions -->
-          </dependency>
+        </dependency>
     </dependencies>
 
     <build>
