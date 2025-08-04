@@ -55,7 +55,7 @@ public class Application {
         Span.current().setAttribute("tracestate.user", "john-doe");
         
         // This HTTP call should now auto-propagate tracestate headers
-        ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localhost:8080/health", String.class);
+        ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localtest.me:8080/health", String.class);
         
         return "Hello, World!\nHealth: " + healthResponse.getBody();
     }
