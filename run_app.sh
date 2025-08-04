@@ -8,7 +8,7 @@
 # 2. Proxy mode: Routes telemetry through local proxy for inspection
 # =============================================================================
 
-export APPLICATIONINSIGHTS_CONNECTION_STRING="[FILL OUT]"
+export APPLICATIONINSIGHTS_CONNECTION_STRING="InstrumentationKey=6471c1fc-6eca-4a51-b10f-4deaa2416fcf;IngestionEndpoint=https://westeurope-5.in.applicationinsights.azure.com/;LiveEndpoint=https://westeurope.livediagnostics.monitor.azure.com/;ApplicationId=db983fea-c7fb-4b21-b19d-87a0b10d0b10"
 
 # Check if proxy mode is requested
 if [ "$1" = "--proxy" ]; then
@@ -22,7 +22,9 @@ if [ "$1" = "--proxy" ]; then
       -Dhttp.proxyHost=localhost \
       -Dhttp.proxyPort=8888 \
       -Dhttps.proxyHost=localhost \
-      -Dhttps.proxyPort=8888"
+      -Dhttps.proxyPort=8888" \
+      -Dhttp.nonProxyHosts="" \
+      -Dhttps.nonProxyHosts=""
 
 else
     echo "🚀 Starting application in NORMAL mode (direct connection to Azure Application Insights)"
