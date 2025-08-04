@@ -139,7 +139,12 @@ public class Application {
         @Bean
         public OpenTelemetry openTelemetry() {
             SdkTracerProvider sdkTracerProvider = SdkTracerProvider.builder()
-                .addSpanProcessor(SimpleSpanProcessor.create(OtlpGrpcSpanExporter.builder().build()))
+                .addSpanProcessor(SimpleSpanProcessor.create(
+                    OtlpGrpcSpanExporter.builder()
+                        .setEndpoint("https://westeurope-5.in.applicationinsights.azure.com/")
+                        .addHeader("Authorization", "Bearer " + System.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"))
+                        .build()
+                ))
                 .setResource(Resource.getDefault())
                 .build();
 
