@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.api.trace.SpanContext;
@@ -77,7 +76,7 @@ public class Application {
             
             // Execute the HTTP call within the updated context
             try (io.opentelemetry.context.Scope scope = newContext.makeCurrent()) {
-                ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localhost:8081/health", String.class);
+                ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localtest.me:8080/health", String.class);
                 return "Hello, World!\nHealth: " + healthResponse.getBody();
             } catch (Exception e) {
                 return "Hello, World!\nHealth check failed: " + e.getMessage();
