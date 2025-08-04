@@ -21,17 +21,26 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.api.trace.SpanContext;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.client.ClientHttpRequestExecution;
+import org.springframework.http.client.ClientHttpResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
 
 @SpringBootApplication
 @RestController
 public class Application {
-    private static final Tracer tracer = GlobalOpenTelemetry.getTracer("java-ot-inspector");
     private final RestTemplate restTemplate;
+    private final Tracer tracer;
 
-    public Application(RestTemplate restTemplate) {
+    public Application(RestTemplate restTemplate, OpenTelemetry openTelemetry) {
         this.restTemplate = restTemplate;
+        this.tracer = openTelemetry.getTracer("java-ot-inspector");
     }
 
     public static void main(String[] args) {
@@ -40,31 +49,48 @@ public class Application {
 
     @GetMapping("/")
     public String hello() {
-        // Add tracestate to current span
-        Span.current().setAttribute("author", "john-doe");
-        Span.current().setAttribute("env", "dev");
+        // Start a new span to ensure we have a valid trace context
+        Span span = tracer.spanBuilder("hello-operation").startSpan();
         
-        // Create tracestate that will be propagated
-        TraceState tracestate = TraceState.builder()
-            .put("tenant", "acme")
-            .put("user", "john-doe")
-            .build();
-        
-        // Set tracestate on current span context
-        Span.current().setAttribute("tracestate.tenant", "acme");
-        Span.current().setAttribute("tracestate.user", "john-doe");
-        
-        // This HTTP call should now auto-propagate tracestate headers
-        ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localtest.me:8080/health", String.class);
-        
-        return "Hello, World!\nHealth: " + healthResponse.getBody();
+        try (io.opentelemetry.context.Scope outerScope = span.makeCurrent()) {
+            // Add attributes to current span
+            span.setAttribute("author", "john-doe");
+            span.setAttribute("env", "dev");
+            
+            // Create tracestate that will be propagated
+            TraceState tracestate = TraceState.builder()
+                .put("tenant", "acme")
+                .put("user", "john-doe")
+                .build();
+            
+            // Get current span and create new span context with tracestate
+            SpanContext currentSpanContext = span.getSpanContext();
+            SpanContext newSpanContext = SpanContext.create(
+                currentSpanContext.getTraceId(),
+                currentSpanContext.getSpanId(),
+                currentSpanContext.getTraceFlags(),
+                tracestate
+            );
+            
+            // Update the current context with the new span context
+            Context newContext = Context.current().with(Span.wrap(newSpanContext));
+            
+            // Execute the HTTP call within the updated context
+            try (io.opentelemetry.context.Scope scope = newContext.makeCurrent()) {
+                ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localtest.me:8080/health", String.class);
+                return "Hello, World!\nHealth: " + healthResponse.getBody();
+            } catch (Exception e) {
+                return "Hello, World!\nHealth check failed: " + e.getMessage();
+            }
+        } finally {
+            span.end();
+        }
     }
 
     @GetMapping("/health")
     public String health() {
-        // Add tracestate to health span
+        // Add attributes to health span
         Span.current().setAttribute("service.type", "health-checker");
-        Span.current().setAttribute("tracestate.service", "health-checker");
         
         return "Application healthy!";
     }
@@ -73,8 +99,38 @@ public class Application {
     public static class RestTemplateConfig {
 
         @Bean
-        public RestTemplate restTemplate() {
-            return new RestTemplate();
+        public RestTemplate restTemplate(OpenTelemetry openTelemetry) {
+            RestTemplate restTemplate = new RestTemplate();
+            
+            // Add interceptor to propagate OpenTelemetry context
+            List<ClientHttpRequestInterceptor> interceptors = new ArrayList<>();
+            interceptors.add(new OpenTelemetryInterceptor(openTelemetry));
+            restTemplate.setInterceptors(interceptors);
+            
+            return restTemplate;
+        }
+    }
+    
+    // Custom interceptor to propagate OpenTelemetry context headers
+    public static class OpenTelemetryInterceptor implements ClientHttpRequestInterceptor {
+        private final TextMapPropagator propagator;
+        
+        public OpenTelemetryInterceptor(OpenTelemetry openTelemetry) {
+            this.propagator = openTelemetry.getPropagators().getTextMapPropagator();
+        }
+        
+        @Override
+        public ClientHttpResponse intercept(
+            HttpRequest request, 
+            byte[] body, 
+            ClientHttpRequestExecution execution) throws IOException {
+            
+            // Inject the current context (including tracestate) into HTTP headers
+            propagator.inject(Context.current(), request, (carrier, key, value) -> {
+                carrier.getHeaders().add(key, value);
+            });
+            
+            return execution.execute(request, body);
         }
     }
 
