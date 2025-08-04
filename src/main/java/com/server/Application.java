@@ -1,10 +1,9 @@
 package com.server;
 
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.instrumentation.spring.httpclients.RestTemplateInterceptor;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.export.OtlpGrpcSpanExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.context.propagation.ContextPropagators;
@@ -56,7 +55,7 @@ public class Application {
         Span.current().setAttribute("tracestate.user", "john-doe");
         
         // This HTTP call should now auto-propagate tracestate headers
-        ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localtest.me:8080/health", String.class);
+        ResponseEntity<String> healthResponse = restTemplate.getForEntity("http://localhost:8080/health", String.class);
         
         return "Hello, World!\nHealth: " + healthResponse.getBody();
     }
@@ -74,10 +73,8 @@ public class Application {
     public static class RestTemplateConfig {
 
         @Bean
-        public RestTemplate restTemplate(OpenTelemetry openTelemetry) {
-            RestTemplate restTemplate = new RestTemplate();
-            restTemplate.getInterceptors().add(new RestTemplateInterceptor(openTelemetry));
-            return restTemplate;
+        public RestTemplate restTemplate() {
+            return new RestTemplate();
         }
     }
 
